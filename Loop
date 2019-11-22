@@ -1,0 +1,35 @@
+library(tidyverse)
+
+data(iris)
+
+##Unique values
+
+number <- vector('double', ncol(iris))
+
+for (i in 1:ncol(iris)){
+  
+  number[[i]] <- length(unique(iris[[i]]))
+}
+
+##Segundo método
+number <- vector('double', ncol(iris))
+names(number) <- names(iris)
+
+for (i in names(iris)){
+  
+  number[i] <- length(unique(iris[[i]]))
+}
+
+str(iris)
+
+##ggplot
+
+plots <- list()
+for (i in 1:4){
+  
+  plots[[i]] <- ggplot(iris, aes(Species, iris[[i]]))+
+    geom_boxplot()
+  
+}
+
+plots
