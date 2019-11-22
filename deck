@@ -1,0 +1,194 @@
+library(tidyverse)
+library(gridExtra)
+
+deck <- data.frame(
+  face = c("king", "queen", "jack", "ten", "nine", "eight", "seven", "six",
+           "five", "four", "three", "two", "ace", "king", "queen", "jack", "ten",
+           "nine", "eight", "seven", "six", "five", "four", "three", "two", "ace",
+           "king", "queen", "jack", "ten", "nine", "eight", "seven", "six", "five",
+           "four", "three", "two", "ace", "king", "queen", "jack", "ten", "nine",
+           "eight", "seven", "six", "five", "four", "three", "two", "ace"),
+  suit = c("spades", "spades", "spades", "spades", "spades", "spades",
+           "spades", "spades", "spades", "spades", "spades", "spades", "spades",
+           "clubs", "clubs", "clubs", "clubs", "clubs", "clubs", "clubs", "clubs",
+           "clubs", "clubs", "clubs", "clubs", "clubs", "diamonds", "diamonds",
+           "diamonds", "diamonds", "diamonds", "diamonds", "diamonds", "diamonds",
+           "diamonds", "diamonds", "diamonds", "diamonds", "diamonds", "hearts",
+           "hearts", "hearts", "hearts", "hearts", "hearts", "hearts", "hearts",
+           "hearts", "hearts", "hearts", "hearts", "hearts"),
+  value = c(13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 13, 12, 11, 10, 9, 8,
+            7, 6, 5, 4, 3, 2, 1, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 13, 12, 11,
+            10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+)
+
+head(deck)
+str(deck)
+
+## Uma mao de carta
+hand <- deck[sample(nrow(deck), 6), ]
+
+##Funcao para amostra
+hand_s <- function(){
+  deck[sample(nrow(deck), 6), ] %>%
+    group_by(suit) %>%
+    mutate(total = sum(value)) %>%
+    ggplot(aes(x = suit, y = total, color = suit))+
+    geom_point()
+}
+
+
+
+## Jogadores
+
+hand_s <- function(){
+  playerA <- deck[sample(nrow(deck), 6), ] %>%
+    arrange(suit, value) 
+  
+  
+  playerB <- deck[sample(nrow(deck), 6), ] %>%
+    arrange(suit, value) 
+  
+    str_c('Player A:',playerA$suit,playerA$value,
+          'Player B:',playerB$suit,playerB$value, sep = ' ')
+}
+
+## Jogadores grafico
+hand_s <- function(){
+  playerA <- deck[sample(nrow(deck), 6), ] %>%
+    group_by(suit)%>%
+    mutate(total = sum(value))
+  
+    plotA <- ggplot(data = playerA, aes(x = suit, y = total, color = suit))+
+      geom_point()
+  
+  
+  playerB <- deck[sample(nrow(deck), 6), ] %>%
+    group_by(suit)%>%
+    mutate(total = sum(value))
+  
+    plotB <- ggplot(data = playerB, aes(x = suit, y = total, color = suit))+
+    geom_point()
+  
+  grid.arrange(plotA, plotB)
+}
+
+
+pontos_spades <- playerA %>%
+  filter(suit == 'spades')%>%
+  group_by(suit)
+
+## rolled
+
+get_symbols <- function(){
+  wheel <- c('DD','7','BBB','BB','B','C','0')
+  sample(wheel, size = 3, replace = TRUE,
+         prob = c(0.03, 0.03, 0.06, 0.1, 0.25, 0.01, 0.52))
+} 
+
+get_symbols()
+## Versão do livro
+
+score <- function(symbols){
+  
+  identidade <- symbols[1] == symbols[2] && symbols[2] == symbols[3]
+  bar <- symbols %in% c('B','BB','BBB')
+  
+  if (identidade){
+    combination <- c('DD' = 100, '7' = 80, 'BBB' = 40, 'BB' = 25, 'B' = 10, 'C' = 10, '0' = 0)
+    prize <- unname(combination[symbols[1]])
+    
+  } else if (all(bar)) {
+    prize <- 5
+    
+  } else {
+      cherries <- sum(symbols == 'C')
+      prize <- c(0, 2, 5)[cherries + 1]
+      
+  } 
+  
+  diamonds <- sum(symbols == 'DD')
+  prize * 2 ^ diamonds
+}
+
+
+## Versão completa
+
+play <- function(){
+  symbols <- get_symbols()
+  
+  ## Imprime as Amostras
+  cat('...ROLETA...','\n','\n',symbols,'\n')
+  cat('Seu Score: ','\n',score(symbols),'\n','\n')
+ 
+  if(score(symbols) > 0){
+    print('Parabéns você pontuou...')
+  } else {
+    print('Pontuação zero... Tente outra vez...')
+  }
+}
+
+## Versão Gustavo
+pontua <- function(x){
+  
+  ## cria a matriz de pontuação maior
+  points <- data.frame(
+    combination = c('DD DD DD','7 7 7','BBB BBB BBB','BB BB BB','B B B','C C C'),
+    prize = c(100, 80, 40, 25, 10, 10)
+  )
+  
+  barrs <- c('BBB BB B','BBB B BB','B')
+  cherry <- c('C C', 'C')
+  # testa se esta na matriz de pontuação
+  if (sum(str_count(points$combination, str_c(x,'$'))) > 0){
+  points[str_detect(points$combination, str_c(x,'$')) == TRUE, ][[2]]
+  } else {
+    ##Testa se tem algun valor C
+    if (sum(str_count(cherry, x) > 0)){
+    return(5)
+    }
+    return(0)
+  }
+}
+
+
+## Calculo das probabilidades
+wheel <- c('DD','7','BBB','BB','B','C','0')
+
+combo <- expand.grid(wheel, wheel, wheel, stringsAsFactors = FALSE)
+prob = c('DD' = 0.03, '7' = 0.03, 'BBB' = 0.06, 'BB' = 0.1, 'B' = 0.25, 
+         'C' = 0.01,'0' = 0.52)
+
+## Acrescent as probabilidades
+combo$prob1 <- prob[combo$Var1]
+combo$prob2 <- prob[combo$Var2]
+combo$prob3 <- prob[combo$Var3]
+combo$prob <- combo$prob1 * combo$prob2 * combo$prob3
+
+head(combo)
+
+## loops
+chars <- vector(length = 4)
+
+words <- c('My','fourth','for','loop')
+
+for (i in 1:4){
+  chars[i] <- words[i]
+}
+
+result <- NULL
+
+for (i in 1:nrow(combo)){
+  result[i] <- score(c(combo[i,1],combo[i,2],combo[i,3]))
+}
+
+## adiciona o score no combo
+combo$score <- result
+sum(combo$score * combo$prob)
+
+
+## Executa 100 vezes o play
+pontuacao <- vector('numeric', length = 1000)
+
+for (i in 1000){
+  pontuacao[i] <- play()
+}
