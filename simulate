@@ -1,0 +1,124 @@
+library(tidyverse)
+library(car)
+library(broom)
+
+## Simulate Data to Boot ##
+
+set.seed(1234)
+peso <- data.frame(
+        age = rnorm(1000, mean = 50, sd = 15),
+        sex = rbinom(1000, 1, prob = 0.4),
+        weight = rgamma(1000, 100, 1)
+   )
+
+peso$age <- ifelse(peso$age <=10,10,peso$age)
+noise <- rnorm(1000, 0.5 , 0.40)
+peso$weight <- ((peso$age / 50) * peso$weight) * noise
+peso$weight <- ifelse(peso$weight <=10,10,peso$weight)
+peso$sex <- factor(peso$sex, labels = c('male','female'))
+
+## summary data
+summary(peso)
+head(peso)
+
+##Real data correlation
+cor(peso$age, peso$weight)
+model_full <- lm(weight ~ age + sex, data = peso)
+summary(model_full)
+
+## Full data plot
+ggplot(data = peso, aes(x = age, y = weight, color = sex))+
+  geom_point()
+
+## Retrive a sample o n=100 and fit a model that represent all population
+set.seed(1234)
+amostra <- peso[sample(nrow(peso), 100), ]
+summary(amostra)
+
+cor(amostra$age, amostra$weight)
+model_amostra <- lm(weight ~ age + sex, data = amostra)
+summary(model_amostra)
+
+## Boostrap ressample
+model_boot <- Boot(model_amostra, R=999)
+summary(model_boot)
+confint(model_boot)
+hist(model_boot)
+
+## We see that sexfemale are now not significant
+## Comparation between lm
+
+models <- list('Total' = model_full,
+               'Sample 100' = model_amostra)
+lapply(models, glance)
+
+## A gamma model will better fit the data
+hist(peso$weight)
+
+model_gamma <- glm(weight ~ age + sex, data = peso,
+                   family = Gamma(link = 'log'))
+summary(model_gamma)
+
+
+## Model in a sample of n=100
+model_gammaS <- glm(weight ~ age + sex, data = amostra,
+                    family = Gamma(link = 'log'))
+summary(model_gammaS)
+
+
+## Boot with gamma
+model_boot_gamma <- Boot(model_gammaS, R=999)
+confint(model_boot_gamma)
+
+
+simulacao <- function(x){
+  sequencia <- rbinom(x, 1, prob = 0.5)
+  soma <- mean(sequencia)
+  return(soma)
+}
+
+########### Probability ###########################3
+
+temp01 <- data.frame(
+    grupo = rep('N95 Respirator', 2512),
+    evento = rbinom(2512, 1, 0.0824)
+)
+
+temp02 <- data.frame(
+    grupo = rep('Medical Mask', 2668),
+    evento = rbinom(2668, 1, 0.0723)
+)
+
+flu <- rbind(temp01, temp02)
+flu$evento <- factor(flu$evento, labels = c('nao','sim'))
+
+table(flu$grupo,flu$evento)
+prop.table(table(flu$grupo,flu$evento))
+
+##Criação de tabela
+library(arsenal)
+library(epitools) #Risco Relativo
+
+table01 <- tableby(grupo ~ evento, data = flu, total = FALSE)
+summary(table01)
+
+chisq.test(table(flu$grupo, flu$evento), correct = FALSE)
+chisq.test(table(flu$grupo, flu$evento), simulate.p.value = TRUE, B=999)
+riskratio(table(flu$grupo, flu$evento))
+riskratio(table(flu$grupo, flu$evento), method = 'boot', replicate = 999)
+
+epitab(table(flu$grupo, flu$evento))
+oddsratio(table(flu$grupo, flu$evento))
+
+model_01 <- glm(evento ~ grupo, data = flu, family = 'binomial')
+summary(model_01)
+exp(confint(model_01))
+ggcoef(model_01, exponentiate = TRUE, exclude_intercept = TRUE, vline_color = 'red',
+       errorbar_color = 'blue', errorbar_size = 1)
+ggpairs(flu, aes(color = evento))
+
+library(tidyverse)
+library(GGally)
+ggplot(data = flu, aes(x = grupo, y = ..count../ sum(..count..), fill = evento))+
+  geom_bar(position = 'fill')+
+  coord_flip()
