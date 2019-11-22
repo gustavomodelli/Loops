@@ -1,0 +1,122 @@
+library(tidyverse)
+library(arsenal)
+library(reshape2)
+library(lme4)
+library(lmerTest)
+
+##Dados Replicados e Simulados de Weidmann ##
+## MSSI score ###
+
+##Article: doi: 10.1681/ASN.2013060585
+
+set.seed(123)
+weidman <- data.frame(
+  group = c(rep('beta regular', 38), rep('beta reduction', 29), rep('alfa', 38)),
+  MSSI_baseline = c(rnorm(38, 20.5, 11.3), rnorm(29, 21.8, 10.5), rnorm(38, 18.1, 9.8)),
+  MSSI_final = c(rnorm(38, 22.4, 11.3), rnorm(29, 23.9, 11.3), rnorm(38, 19.9, 11.6)),
+  LVMi_baseline = c(rnorm(38, 95.7, 35.8), rnorm(29, 91.5, 34.7), rnorm(38, 82.8, 26.9)),
+  LVMi_final = c(rnorm(38, 86.3, 24.9), rnorm(29, 87.1, 21.8), rnorm(38, 80.3, 14.7)),
+  eGFR_baseline = c(rnorm(38, 93.6, 43.1), rnorm(29, 99.33, 21.8), rnorm(38, 91.33, 35.4)),
+  eGFR_final = c(rnorm(38, 93, 47.76), rnorm(29, 97, 24.95), rnorm(38, 91.6, 40.1))
+)
+weidman$id <- 1:nrow(weidman)
+weidman$group <- factor(weidman$group, levels = c('beta regular','beta reduction','alfa'))
+
+##comparações
+table01 <- tableby(group ~ . , data = weidman, total = FALSE)
+summary(table01)
+
+##Comparações simples antes x depois
+##beta regular dose
+beta_normal <- weidman %>%
+  filter(group == 'beta regular')
+
+t.test(beta_normal$MSSI_baseline, beta_normal$MSSI_final)
+t.test(beta_normal$LVMi_baseline, beta_normal$LVMi_final)
+t.test(beta_normal$eGFR_baseline, beta_normal$eGFR_final)
+
+##Beta reduced
+beta_reduced <- weidman %>%
+  filter(group == 'beta reduction')
+
+t.test(beta_reduced$MSSI_baseline, beta_reduced$MSSI_final)
+t.test(beta_reduced$LVMi_baseline, beta_reduced$LVMi_final)
+t.test(beta_reduced$eGFR_baseline, beta_reduced$eGFR_final)
+
+##Alfa
+alfa <- weidman %>%
+  filter(group == 'alfa')
+
+t.test(alfa$MSSI_baseline, alfa$MSSI_final)
+t.test(alfa$LVMi_baseline, alfa$LVMi_final)
+t.test(alfa$eGFR_baseline, alfa$eGFR_final)
+
+  ##Using a linear model
+model_01 <- lm(MSSI_final ~ MSSI_baseline + group, data = weidman)
+summary(model_01)
+
+
+##Forma correta são as medidas repetidas##
+weidman_long <- melt(weidman, id.vars = c('id','group'), measure.vars = c('MSSI_baseline','MSSI_final'),
+                     variable.name = 'time', value.name = 'MSSI')
+
+weidman_long2 <- melt(weidman, id.vars = c('id','group'), measure.vars = c('LVMi_baseline','LVMi_final'),
+                      variable.name = 'time', value.name = 'LVMi')
+
+weidman_long3 <- melt(weidman, id.vars = c('id','group'), measure.vars = c('eGFR_baseline','eGFR_final'),
+                      variable.name = 'time', value.name = 'eGFR')
+
+##plot
+ggplot(data = weidman_long, aes(x = time, y = MSSI, fill = group))+
+  geom_boxplot()+
+  facet_wrap(~ group)
+
+ggplot(data = weidman_long, aes(x = as.numeric(time), y = MSSI, color = group))+
+  stat_summary(fun.y = 'mean', geom = 'smooth', se = FALSE)+
+  stat_summary(fun.data = 'mean_cl_normal', geom = 'errorbar',
+               width = .2, size = 1)+
+  facet_wrap(~ group)
+
+ggplot(data = weidman_long2, aes(x = time, y = LVMi, fill = group))+
+  geom_boxplot()+
+  facet_wrap(~ group)
+
+ggplot(data = weidman_long2, aes(x = as.numeric(time), y = LVMi, color = group))+
+  stat_summary(fun.y = 'mean', geom = 'smooth', se = FALSE)+
+  stat_summary(fun.data = 'mean_cl_normal', geom = 'errorbar',
+               width = .2, size = 1)+
+  facet_wrap(~ group)
+
+ggplot(data = weidman_long3, aes(x = time, y = eGFR, fill = group))+
+  geom_boxplot()+
+  facet_wrap(~ group)
+
+ggplot(data = weidman_long3, aes(x = as.numeric(time), y = eGFR, color = group))+
+  stat_summary(fun.y = 'mean', geom = 'smooth', se = FALSE)+
+  stat_summary(fun.data = 'mean_cl_normal', geom = 'errorbar',
+               width = .2, size = 1)+
+  facet_wrap(~ group)
+
+model_02 <- lmer(MSSI ~ time + group + (1 | id), data = weidman_long)
+summary(model_02)
+
+model_03 <- lmer(LVMi ~ group + time + (1 | id), data = weidman_long2)
+summary(model_03)
+
+model_04 <- lmer(eGFR ~ time + group + (1 | id), data = weidman_long3)
+summary(model_04)
+## Usados para o calculo da mediana ###################
+######################################################################
+
+#conversão de mediana para media e dp
+#Os dados estão em mediana
+media <- function(median, q1, q3){
+  ( median + q1 + q3 ) / 3
+}
+
+dp <- function(n, q1, q3){
+  (q3 - q1) / (2 * (qnorm((0.75 * n - 0.125) / (n + 0.25))))
+}
+
+media(99, 63, 119)
+dp(38, 63, 119)
