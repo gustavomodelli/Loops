@@ -1,0 +1,128 @@
+library(tidyverse)
+library(lubridate)
+library(gridExtra)
+library(reshape2)
+       
+## Numeros mais provaveis dos apostadores
+
+gen_lotto<-function(){
+  white<-seq(1:59)
+  red<-31:39
+  
+  probs<-white
+  # Decrease probabilities for commonly chosen numbers
+  probs[probs<=31]<-1/(2*59)
+  probs[probs>=32]<-1/14
+  
+  # We need 5 white
+  w<-sample(white,5,prob=probs)
+  # We need 1 PowerBall
+  r<-sample(red,1)
+  # Print results
+  cat(" White Balls:",w[order(w)],"\n","Powerball:",r)
+
+  # Make a good warning
+  cat("\n Remember, your odds of winning: \n","1 in 195,249,054")
+}
+
+gen_lotto()
+
+## Resultados da Mega Sena
+sena <- read.csv('megasena.csv', dec = '.', sep = ';')
+sena$Data <- as.Date(sena$Data, format = '%d/%m/%Y')
+str(sena)
+dim(sena)
+sena$jogo <- str_c(sena$bola.1, sena$bola.2, sena$bola.3, sena$bola.4,
+                   sena$bola.5, sena$bola.6, sep = ' ')
+
+sum(unique(sena$jogo) == TRUE)
+
+##Distribuição das Bolas
+graficoHist <- function(dat){
+bol1 <- ggplot(data = dat, aes(x = bola.1))+
+  geom_histogram(binwidth = 1, fill = 'blue')
+
+bol2 <- ggplot(data = dat, aes(x = bola.2))+
+  geom_histogram(binwidth = 1, fill = 'red')
+
+bol3 <- ggplot(data = dat, aes(x = bola.3))+
+  geom_histogram(binwidth = 1, fill = 'green')
+
+bol4 <- ggplot(data = dat, aes(x = bola.4))+
+  geom_histogram(binwidth = 1, fill = 'yellow')
+
+bol5 <- ggplot(data = dat, aes(x = bola.5))+
+  geom_histogram(binwidth = 1, fill = 'cyan')
+
+bol6 <- ggplot(data = dat, aes(x = bola.6))+
+  geom_histogram(binwidth = 1, fill = 'magenta')
+
+grid.arrange(bol1, bol2, bol3, bol4, bol5, bol6)
+} 
+
+graficoHist(sena)
+
+## simulacao 2174 sorteios
+sena_sim <- data.frame(
+        bola.1 = replicate(2174, sample(1:60, 1, replace = TRUE)),
+        bola.2 = replicate(2174, sample(1:60, 1, replace = TRUE)),
+        bola.3 = replicate(2174, sample(1:60, 1, replace = TRUE)),
+        bola.4 = replicate(2174, sample(1:60, 1, replace = TRUE)),
+        bola.5 = replicate(2174, sample(1:60, 1, replace = TRUE)),
+        bola.6 = replicate(2174, sample(1:60, 1, replace = TRUE))
+  )
+names(sena_sim) <- c('bola.1','bola.2','bola.3','bola.4','bola.5','bola.6')
+graficoHist(sena_sim)
+
+## Todas as bolas
+sena_long <- melt(sena, id.vars = c('Concurso','Data'),
+                  variable.name = 'bolas', value.name = 'bola')
+
+sena_sim_long <- melt(sena_sim, variable.name = 'bolas',
+                      value.name = 'bola')
+
+
+## Distribuição das probabilidades de frequencias
+## todas as bolas
+ggplot(data = sena_long, aes(x = bola))+
+  geom_density(color = 'blue', size = 2)+
+  geom_density(data = sena_sim_long, aes(x = bola), color = 'red', size = 2)
+
+## Mais sorteados
+str(sena_long)
+sena_long$bola <- as.factor(sena_long$bola)
+
+dezenas <- sena_long %>%
+  group_by(bola)%>%
+  count() %>%
+  arrange(-n)
+
+ggplot(data = dezenas, aes(reorder(x = bola,n), y = n))+
+  geom_point(color = 'red', size = 1.2)+
+  coord_flip()+
+  geom_segment(aes(xend = bola, yend = 0))+
+  labs(x = '', y = 'numero de vezes sorteadas')
+
+## Distribuição deste mesmo padrao no aleatório
+sena_sim_long$bola <- as.factor(sena_sim_long$bola)
+
+dezenas2 <- sena_sim_long %>%
+  group_by(bola)%>%
+  count() %>%
+  arrange(-n)
+
+ggplot(data = dezenas2, aes(reorder(x = bola,n), y = n))+
+  geom_point(color = 'red', size = 1.2)+
+  coord_flip()+
+  geom_segment(aes(xend = bola, yend = 0))+
+  labs(x = '', y = 'numero de vezes sorteadas')
+
+
+## Simulação com 2 dados
+grade <- expand.grid(1:6, 1:6)
+grade$prob <- rep(0.0278, 36)
+
+sum(grade$Var1 * grade$prob)
+
+
+## Todas as combinações possíveis coma MegaSena
