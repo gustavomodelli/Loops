@@ -1,0 +1,26 @@
+library(tidyverse)
+
+data(mtcars)
+
+arm <- mtcars %>%
+  map(shapiro.test) %>% 
+  map(as.character) %>% 
+  map(~ .[[2]]) %>% 
+  map(as.numeric) %>% 
+  map(~ ifelse(. > 0.05,'normal','nao normal'))
+
+
+##mutate at seleciona as variaveis para tornar fator
+## argumentos: data, vars, funs
+
+vars <- c('cyl','vs','am')
+
+mtcars2 <- mtcars %>% 
+  mutate_at(vars, ~ as.factor(.))
+
+
+## mutate se obedecer condição
+## data, predicato, funcao
+
+mtcars3 <- mtcars %>% 
+  mutate_if(names(.) == 'gear', ~ as.factor(.))
