@@ -1,0 +1,58 @@
+library(tidyverse)
+library(arsenal)
+library(gridExtra)
+
+
+anest <- data.frame(
+   group = c(rep('Control', 10), rep('Experimental', 10)),
+   tubular = c(rep(1, 3), rep(2, 3), rep(3, 4), rep(1, 7), rep(3, 3)),
+   vacuolisation = c(rep(1, 1), rep(2, 4), rep(3, 5), rep(1, 5), rep(2, 4), rep(3, 1)),
+   dilatation = c(rep(0, 1), rep(1, 4), rep(2, 4), rep(3, 1), rep(0, 6), rep(1, 3), rep(2, 1))
+  
+)
+
+str(anest)
+summary(anest)
+
+## shapiro test
+anest %>% 
+  select_if(is.numeric) %>% 
+  map(shapiro.test)
+
+
+tabela01 <- tableby(group ~ . , data = anest, total = FALSE)
+summary(tabela01)
+
+tabel02 <- tableby(group ~ kwt(tubular) + kwt(vacuolisation) + kwt(dilatation), data = anest, total = FALSE)
+summary(tabel02)
+
+ggplot(anest, aes(group, vacuolisation, fill = group))+
+  geom_violin()+
+  geom_boxplot(width = 0.2)
+
+## loops
+
+
+plots_control <- list()
+plots_exp <- list()
+x <- c('tubular','vacuolisation','dilatation')
+
+for (i in seq_along(x)){
+  plots_control[[i]] <- anest %>% 
+    filter(group == 'Control') %>% 
+    ggplot(aes_string(x[[i]]))+
+    geom_density(fill = 'red')
+  
+  plots_exp[[i]] <- anest %>% 
+    filter(group == 'Experimental') %>% 
+    ggplot(aes_string(x[[i]]))+
+    geom_density(fill = 'blue')
+  
+}
+
+##grid arrange
+vector <- str_c('plots_exp[[',seq_along(x),']]', collapse = ',', sep = '')
+
+
+grid.arrange(plots_control[[1]], plots_exp[[1]], plots_control[[2]], 
+             plots_exp[[2]], plots_control[[3]], plots_exp[[3]])
